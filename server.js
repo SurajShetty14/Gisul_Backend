@@ -122,6 +122,77 @@ app.post('/logout', (req, res) => {
   });
 });
 
+// Get user profile
+app.get('/profile', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const user = await User.findById(req.session.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      email: user.email,
+      username: user.username,
+      fullName: user.fullName,
+      phone: user.phone,
+      gender: user.gender,
+      country: user.country,
+      language: user.language,
+      timezone: user.timezone
+    });
+  } catch (err) {
+    console.error('Profile read error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update user profile
+app.put('/profile', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const { fullName, phone, gender, country, language, timezone } = req.body;
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update fields
+    if (fullName !== undefined) user.fullName = fullName;
+    if (phone !== undefined) user.phone = phone;
+    if (gender !== undefined) user.gender = gender;
+    if (country !== undefined) user.country = country;
+    if (language !== undefined) user.language = language;
+    if (timezone !== undefined) user.timezone = timezone;
+
+    await user.save();
+
+    res.json({ 
+      message: 'Profile updated successfully',
+      profile: {
+        email: user.email,
+        username: user.username,
+        fullName: user.fullName,
+        phone: user.phone,
+        gender: user.gender,
+        country: user.country,
+        language: user.language,
+        timezone: user.timezone
+      }
+    });
+  } catch (err) {
+    console.error('Profile update error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
