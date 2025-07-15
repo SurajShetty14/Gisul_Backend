@@ -110,6 +110,18 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Logout endpoint
+app.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ message: 'Logout failed.' });
+    }
+    res.clearCookie('connect.sid'); // Default session cookie name
+    res.json({ message: 'Logged out successfully.' });
+  });
+});
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
