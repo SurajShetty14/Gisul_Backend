@@ -27,7 +27,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
-app.options('*', cors({
+app.options('/*', cors({
   origin: 'https://www.snibo.co',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
