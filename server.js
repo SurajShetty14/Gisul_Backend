@@ -15,6 +15,8 @@ const Wishlist = require('./Wishlist');
 const MulterAzureStorage = require('multer-azure-blob-storage').MulterAzureStorage;
 
 const TrainerApplication = require('./TrainerApplication');
+const Order = require('./Order');
+const Progress = require('./Progress');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -428,6 +430,63 @@ app.post('/course/image', uploadCourseImage.single('courseImage'), async (req, r
     console.error('Course image upload error:', err);
     res.status(500).json({ message: 'Server error' });
   }
+});
+
+// Payment success endpoint
+app.post('/payment/success', async (req, res) => {
+  try {
+    const { userId, courses, totalAmount, status, paymentDate } = req.body;
+    if (!userId || !courses || !totalAmount || !status || !paymentDate) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // 1. Create order
+    const order = new Order({
+      userId,
+      courses: courses.map(c => ({
+        courseId: c.courseId,
+        title: c.title,
+        price: c.price
+      })),
+      totalAmount,
+      status,
+      paymentDate
+    });
+    await order.save();
+
+    // 2. Create progress entries (one per course)
+    const progressEntries = courses.map(c => ({
+      userId,
+      courseId: c.courseId,
+      title: c.title,
+      price: c.price,
+      duration: c.duration,
+      status: 'enrolled',
+      enrolledAt: paymentDate
+    }));
+    await Progress.insertMany(progressEntries);
+
+    res.status(201).json({ message: 'Order and progress saved' });
+  } catch (err) {
+    console.error('Payment success error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get progress for a user
+app.get('/progress', async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ message: 'Missing userId' });
+  const progress = await Progress.find({ userId });
+  res.json({ progress });
+});
+
+// Get orders for a user
+app.get('/orders', async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ message: 'Missing userId' });
+  const orders = await Order.find({ userId }).sort({ paymentDate: -1 });
+  res.json({ orders });
 });
 
 // Connect to MongoDB
