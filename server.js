@@ -147,13 +147,12 @@ app.get('/profile', async (req, res) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-
     const user = await User.findById(req.session.userId).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
     res.json({
+      _id: user._id, // <-- Add this line!
       email: user.email,
       username: user.username,
       fullName: user.fullName,
@@ -162,7 +161,7 @@ app.get('/profile', async (req, res) => {
       country: user.country,
       language: user.language,
       timezone: user.timezone,
-      profilePic: user.profilePic
+      profilePic: user.profilePic || ''
     });
   } catch (err) {
     console.error('Profile read error:', err);
