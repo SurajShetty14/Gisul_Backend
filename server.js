@@ -13,6 +13,7 @@ const path = require('path');
 const Cart = require('./Cart');
 const Wishlist = require('./Wishlist');
 const MulterAzureStorage = require('multer-azure-blob-storage').MulterAzureStorage;
+const Counter = require('./Counter');
 
 const TrainerApplication = require('./TrainerApplication');
 const Order = require('./Order');
@@ -440,8 +441,16 @@ app.post('/payment/success', async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // 1. Create order
+    // Increment order counter
+    let counter = await Counter.findOneAndUpdate(
+      { name: 'order' },
+      { $inc: { value: 1 } },
+      { new: true, upsert: true }
+    );
+
+    // Create order
     const order = new Order({
+      orderId: counter.value,
       userId,
       courses: courses.map(c => ({
         courseId: c.courseId,
@@ -454,7 +463,7 @@ app.post('/payment/success', async (req, res) => {
     });
     await order.save();
 
-    // 2. Create progress entries (one per course)
+    // Create progress entries
     const progressEntries = courses.map(c => ({
       userId,
       courseId: c.courseId,
@@ -472,6 +481,7 @@ app.post('/payment/success', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 // Get progress for a user
 app.get('/progress', async (req, res) => {
