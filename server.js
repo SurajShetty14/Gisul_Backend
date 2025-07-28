@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: ['https://www.snibo.co'], // Array allows for multiple allowed origins if needed
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Explicitly allow these HTTP methods
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow these HTTP methods
   credentials: true // Allow cookies/session to be sent
 }));
 app.use(express.json());
