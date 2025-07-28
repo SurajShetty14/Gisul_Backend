@@ -21,16 +21,19 @@ const Progress = require('./Progress');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors({
-  origin: 'https://www.snibo.co', // or use an array if you have multiple allowed origins
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true // if you use cookies/sessions
-}));
-app.use(express.json());
-
 // Session middleware
 app.set('trust proxy', 1); // if deployed behind a proxy (Render, Heroku, etc.)
+
+
+// Middleware
+const corsOptions = {
+  origin: 'https://www.snibo.co',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 
 app.use(session({
   secret: process.env.JWT_SECRET,
@@ -42,6 +45,8 @@ app.use(session({
     secure: true      // Required for HTTPS
   }
 }));
+
+app.use(express.json());
 
 // Test route
 app.get('/', (req, res) => {
