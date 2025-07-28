@@ -12,8 +12,6 @@ const multer = require('multer');
 const path = require('path');
 const Cart = require('./Cart');
 const Wishlist = require('./Wishlist');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('cloudinary').v2;
 const MulterAzureStorage = require('multer-azure-blob-storage').MulterAzureStorage;
 
 const TrainerApplication = require('./TrainerApplication');
@@ -227,15 +225,21 @@ const upload = multer({ storage: storage });
 // Serve static files from uploads folder
 app.use('/uploads', express.static('uploads'));
 
-// Upload profile picture endpoint
-const profilePicStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'profile-pictures', // Cloudinary folder
-    allowed_formats: ['jpg', 'jpeg', 'png'],
-    public_id: (req, file) => req.session.userId + '_profile_' + Date.now()
+// Azure Blob Storage for profile pictures
+const profilePicStorage = new MulterAzureStorage({
+  connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
+  accessKey: '', // Not needed if using connection string
+  accountName: '', // Not needed if using connection string
+  containerName: process.env.AZURE_STORAGE_PROFILE_CONTAINER_NAME || 'profile-pictures',
+  blobName: (req, file) => {
+    // Unique filename for profile pictures
+    return req.session.userId + '_profile_' + Date.now() + '.' + file.originalname.split('.').pop();
+  },
+  contentSettings: {
+    contentType: (req, file) => file.mimetype
   }
 });
+
 const uploadProfilePic = multer({ storage: profilePicStorage });
 
 app.post('/profile/picture', uploadProfilePic.single('profilePic'), async (req, res) => {
@@ -245,7 +249,7 @@ app.post('/profile/picture', uploadProfilePic.single('profilePic'), async (req, 
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded' });
   }
-  const imageUrl = req.file.path; // Cloudinary URL
+  const imageUrl = req.file.url; // Azure Blob Storage URL
   await User.findByIdAndUpdate(req.session.userId, { profilePic: imageUrl });
   res.json({ message: 'Profile picture updated', profilePic: imageUrl });
 });
@@ -353,25 +357,6 @@ app.post('/wishlist/remove', async (req, res) => {
   await wishlist.save();
   res.json({ message: 'Item removed', wishlist: wishlist.items });
 });
-
-// Cloudinary config
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-// Multer + Cloudinary storage
-const cloudinaryStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'resumes', // Cloudinary folder
-    resource_type: 'raw', // For PDF, DOC, etc.
-    format: async (req, file) => undefined, // keep original
-    public_id: (req, file) => Date.now() + '-' + file.originalname
-  }
-});
-const uploadCloudinary = multer({ storage: cloudinaryStorage });
 
 // Azure Blob Storage config
 const azureStorage = new MulterAzureStorage({
