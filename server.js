@@ -401,6 +401,21 @@ app.post('/apply-trainer', uploadAzure.single('resume'), async (req, res) => {
   }
 });
 
+// Azure Blob Storage for course images
+const courseImageStorage = new MulterAzureStorage({
+  connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
+  containerName: process.env.AZURE_STORAGE_COURSE_CONTAINER_NAME || 'course-images',
+  blobName: (req, file) => {
+    // Unique filename for course images
+    return 'course_' + Date.now() + '_' + Math.round(Math.random() * 1E9) + '.' + file.originalname.split('.').pop();
+  },
+  contentSettings: {
+    contentType: (req, file) => file.mimetype
+  }
+});
+
+const uploadCourseImage = multer({ storage: courseImageStorage });
+
 // Upload course image
 app.post('/course/image', uploadCourseImage.single('courseImage'), async (req, res) => {
   try {
@@ -430,18 +445,3 @@ app.get('/protected', (req, res) => {
   }
   res.json({ message: 'You are authenticated!', user: req.session });
 });
-
-// Azure Blob Storage for course images
-const courseImageStorage = new MulterAzureStorage({
-  connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
-  containerName: process.env.AZURE_STORAGE_COURSE_CONTAINER_NAME || 'course-images',
-  blobName: (req, file) => {
-    // Unique filename for course images
-    return 'course_' + Date.now() + '_' + Math.round(Math.random() * 1E9) + '.' + file.originalname.split('.').pop();
-  },
-  contentSettings: {
-    contentType: (req, file) => file.mimetype
-  }
-});
-
-const uploadCourseImage = multer({ storage: courseImageStorage });
