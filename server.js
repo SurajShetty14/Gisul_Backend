@@ -257,7 +257,7 @@ app.post('/profile/picture', uploadProfilePic.single('profilePic'), async (req, 
 // Add to cart
 app.post('/cart/add', async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: 'Not authenticated' });
-  const { courseId, title, price, duration } = req.body;
+  const { courseId, title, price, duration, imageUrl } = req.body; // Add imageUrl
   if (!courseId) return res.status(400).json({ message: 'Missing courseId' });
 
   let cart = await Cart.findOne({ userId: req.session.userId });
@@ -269,7 +269,7 @@ app.post('/cart/add', async (req, res) => {
   if (existingItem) {
     existingItem.quantity += 1; // Increment quantity if already in cart
   } else {
-    cart.items.push({ courseId, title, price, duration, quantity: 1 });
+    cart.items.push({ courseId, title, price, duration, imageUrl, quantity: 1 });
   }
   await cart.save();
   res.json({ message: 'Added to cart', cart: cart.items });
@@ -322,7 +322,7 @@ app.post('/cart/remove', async (req, res) => {
 // Add to wishlist
 app.post('/wishlist/add', async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: 'Not authenticated' });
-  const { courseId, title, price, duration } = req.body;
+  const { courseId, title, price, duration, imageUrl } = req.body; // Add imageUrl
   if (!courseId) return res.status(400).json({ message: 'Missing courseId' });
 
   let wishlist = await Wishlist.findOne({ userId: req.session.userId });
@@ -331,7 +331,7 @@ app.post('/wishlist/add', async (req, res) => {
   }
   // Prevent duplicates
   if (!wishlist.items.some(item => item.courseId === courseId)) {
-    wishlist.items.push({ courseId, title, price, duration });
+    wishlist.items.push({ courseId, title, price, duration, imageUrl });
     await wishlist.save();
   }
   res.json({ message: 'Added to wishlist', wishlist: wishlist.items });
@@ -401,6 +401,20 @@ app.post('/apply-trainer', uploadAzure.single('resume'), async (req, res) => {
   }
 });
 
+// Upload course image
+app.post('/course/image', uploadCourseImage.single('courseImage'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image uploaded' });
+    }
+    const imageUrl = req.file.url;
+    res.json({ message: 'Course image uploaded successfully', imageUrl });
+  } catch (err) {
+    console.error('Course image upload error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB Atlas'))
@@ -416,3 +430,18 @@ app.get('/protected', (req, res) => {
   }
   res.json({ message: 'You are authenticated!', user: req.session });
 });
+
+// Azure Blob Storage for course images
+const courseImageStorage = new MulterAzureStorage({
+  connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
+  containerName: process.env.AZURE_STORAGE_COURSE_CONTAINER_NAME || 'course-images',
+  blobName: (req, file) => {
+    // Unique filename for course images
+    return 'course_' + Date.now() + '_' + Math.round(Math.random() * 1E9) + '.' + file.originalname.split('.').pop();
+  },
+  contentSettings: {
+    contentType: (req, file) => file.mimetype
+  }
+});
+
+const uploadCourseImage = multer({ storage: courseImageStorage });

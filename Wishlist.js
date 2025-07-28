@@ -8,6 +8,7 @@ const wishlistSchema = new mongoose.Schema({
       title: String,
       price: Number,
       duration: String,
+      imageUrl: String, // Add this field for course image
       addedAt: { type: Date, default: Date.now }
     }
   ]

@@ -8,6 +8,7 @@ const cartSchema = new mongoose.Schema({
       title: String,
       price: Number,
       duration: String,
+      imageUrl: String, // Add this field for course image
       quantity: { type: Number, default: 1 },
       addedAt: { type: Date, default: Date.now }
     }
