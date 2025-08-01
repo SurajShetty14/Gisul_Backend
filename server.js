@@ -14,6 +14,8 @@ const Cart = require('./Cart');
 const Wishlist = require('./Wishlist');
 const MulterAzureStorage = require('multer-azure-blob-storage').MulterAzureStorage;
 const Counter = require('./Counter');
+const axios = require('axios');
+const { OAuth2Client } = require('google-auth-library');
 
 const TrainerApplication = require('./TrainerApplication');
 const Order = require('./Order');
@@ -54,7 +56,7 @@ app.post('/signup', async (req, res) => {
   try {
     const { email, username, phone, password } = req.body;
 
-    // Basic validation
+    // Basic validation for manual signup
     if (!email || !username || !phone || !password) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
@@ -104,6 +106,11 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
+    // Check if user is OAuth-only (no password)
+    if (!user.password) {
+      return res.status(401).json({ message: 'This account was created with Google OAuth. Please use Google login.' });
+    }
+
     // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -139,6 +146,101 @@ app.post('/logout', (req, res) => {
     res.clearCookie('connect.sid'); // Default session cookie name
     res.json({ message: 'Logged out successfully.' });
   });
+});
+
+// Google OAuth routes
+app.get('/auth/google', (req, res) => {
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
+    `redirect_uri=${encodeURIComponent(process.env.GOOGLE_REDIRECT_URI)}&` +
+    `response_type=code&` +
+    `scope=openid email profile&` +
+    `access_type=offline&` +
+    `prompt=consent`;
+  
+  res.redirect(googleAuthUrl);
+});
+
+app.get('/auth/google/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    
+    if (!code) {
+      return res.status(400).json({ message: 'Authorization code is required' });
+    }
+
+    // Exchange code for tokens
+    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      code: code,
+      grant_type: 'authorization_code',
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI
+    }, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
+    const { access_token, id_token } = tokenResponse.data;
+
+    // Verify and decode the ID token
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    const ticket = await client.verifyIdToken({
+      idToken: id_token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, given_name, family_name, picture } = payload;
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Create new user for OAuth
+      const username = email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5);
+      
+      user = new User({
+        email,
+        username,
+        phone: '', // OAuth users don't provide phone initially
+        password: null, // OAuth users don't have passwords
+        fullName: name || `${given_name || ''} ${family_name || ''}`.trim(),
+        profilePic: picture || '',
+        oauthProvider: 'google'
+      });
+
+      await user.save();
+    } else {
+      // Update existing user's OAuth info if needed
+      if (!user.oauthProvider) {
+        user.oauthProvider = 'google';
+        if (!user.fullName && name) user.fullName = name;
+        if (!user.profilePic && picture) user.profilePic = picture;
+        await user.save();
+      }
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Set session
+    req.session.userId = user._id;
+    req.session.username = user.username;
+    req.session.email = user.email;
+
+    // Redirect to frontend with token
+    res.redirect(`https://www.snibo.co/login-success?token=${token}`);
+
+  } catch (error) {
+    console.error('Google OAuth callback error:', error);
+    res.redirect('https://www.snibo.co/login-error?message=Authentication failed');
+  }
 });
 
 // Get user profile
