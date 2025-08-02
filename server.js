@@ -169,7 +169,7 @@ app.get('/auth/google/callback', async (req, res) => {
       return res.status(400).json({ message: 'Authorization code is required' });
     }
 
-    
+
     // Exchange code for token
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       client_id: process.env.GOOGLE_CLIENT_ID,
@@ -236,7 +236,7 @@ app.get('/auth/google/callback', async (req, res) => {
     req.session.email = user.email;
 
     // Redirect to frontend with token
-    res.redirect(`https://www.snibo.co/login-success?token=${token}`);
+    res.redirect(`https://www.snibo.co/landing-page?token=${token}`);
 
   } catch (error) {
     console.error('Google OAuth callback error:', error);
