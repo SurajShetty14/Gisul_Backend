@@ -169,7 +169,8 @@ app.get('/auth/google/callback', async (req, res) => {
       return res.status(400).json({ message: 'Authorization code is required' });
     }
 
-    // Exchange code for tokens
+    
+    // Exchange code for token
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
