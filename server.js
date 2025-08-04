@@ -26,14 +26,14 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: 'https://www.snibo.co',
+  origin: ['https://www.snibo.co', 'https://gisulbackend-cwbmhpachde9eefn.southindia-01.azurewebsites.net'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
 app.use(express.json());
 
 // Session middleware
-app.set('trust proxy', 1); // if deployed behind a proxy (Render, Heroku, etc.)
+app.set('trust proxy', 1); // Required for Azure App Service
 
 app.use(session({
   secret: process.env.JWT_SECRET,
@@ -42,7 +42,9 @@ app.use(session({
   store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
   cookie: {
     sameSite: 'None', // Required for cross-origin cookies
-    secure: true      // Required for HTTPS
+    secure: true,     // Required for HTTPS
+    httpOnly: true,   // Security enhancement
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
 
@@ -315,20 +317,12 @@ app.put('/profile', async (req, res) => {
   }
 });
 
-// Set up storage for uploaded images
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // Make sure this folder exists
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    cb(null, req.session.userId + '_profile' + ext);
-  }
-});
+// Set up storage for uploaded images (Azure compatible)
+const storage = multer.memoryStorage(); // Use memory storage for Azure
 const upload = multer({ storage: storage });
 
-// Serve static files from uploads folder
-app.use('/uploads', express.static('uploads'));
+// Note: Local file storage removed for Azure compatibility
+// All file uploads should use Azure Blob Storage
 
 // Azure Blob Storage for profile pictures
 const profilePicStorage = new MulterAzureStorage({
