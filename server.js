@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: ['https://gisul.co', 'https://api.gisul.co.in'],
+  origin: ['https://gisul.co.in', 'https://www.gisul.co.in'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
