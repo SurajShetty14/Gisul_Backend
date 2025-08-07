@@ -238,11 +238,11 @@ app.get('/auth/google/callback', async (req, res) => {
     req.session.email = user.email;
 
     // Redirect to frontend with token
-    res.redirect(`https://www.gisul.co/landing-page?token=${token}`);
+    res.redirect(`https://gisul.co/courses?token=${token}`);
 
   } catch (error) {
     console.error('Google OAuth callback error:', error);
-    res.redirect('https://www.gisul.co/login-error?message=Authentication failed');
+    res.redirect('https://gisul.co/login-error?message=Authentication failed');
   }
 });
 
