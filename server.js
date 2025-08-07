@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: ['https://www.snibo.co', 'https://gisulbackend-cwbmhpachde9eefn.southindia-01.azurewebsites.net'],
+  origin: ['https://www.gisul.co', 'https://api.gisul.co.in'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
@@ -238,11 +238,11 @@ app.get('/auth/google/callback', async (req, res) => {
     req.session.email = user.email;
 
     // Redirect to frontend with token
-    res.redirect(`https://www.snibo.co/landing-page?token=${token}`);
+    res.redirect(`https://www.gisul.co/landing-page?token=${token}`);
 
   } catch (error) {
     console.error('Google OAuth callback error:', error);
-    res.redirect('https://www.snibo.co/login-error?message=Authentication failed');
+    res.redirect('https://www.gisul.co/login-error?message=Authentication failed');
   }
 });
 
